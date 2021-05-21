@@ -13,6 +13,8 @@ module Kafka
   #
   class SocketWithTimeout
 
+    KEEPIDLE = if RUBY_PLATFORM =~ /darwin/ then 0x10 else Socket::TCP_KEEPIDLE end
+
     # Opens a socket.
     #
     # @param host [String]
@@ -28,6 +30,15 @@ module Kafka
 
       @socket = Socket.new(Socket.const_get(addr[0][0]), Socket::SOCK_STREAM, 0)
       @socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+
+      # enable keepalive
+      @socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, true)
+      # idle time after which keepalive packets should be sent
+      @socket.setsockopt(Socket::IPPROTO_TCP, KEEPIDLE, 60)
+      # Send probes 10 seconds apart.
+      @socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_KEEPINTVL, 10)
+      # Send up to 5 probes before giving up.
+      @socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_KEEPCNT, 5)
 
       begin
         # Initiate the socket connection in the background. If it doesn't fail
